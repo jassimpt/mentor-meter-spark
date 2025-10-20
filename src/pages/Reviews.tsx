@@ -3,18 +3,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Star } from "lucide-react";
+import { Search, Plus, Star, CalendarIcon } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type Review = Tables<"review">;
+
+const formSchema = z.object({
+  mentor_name: z.string().min(1, "Mentor name is required"),
+  intern_name: z.string().min(1, "Intern name is required"),
+  review_date: z.date({ required_error: "Review date is required" }),
+  review_topic: z.string().min(1, "Review topic is required"),
+  review_score: z.number().min(1, "Score must be at least 1").max(10, "Score must be at most 10"),
+});
 
 const Reviews = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      mentor_name: "",
+      intern_name: "",
+      review_topic: "",
+      review_score: 5,
+    },
+  });
 
   useEffect(() => {
     fetchReviews();
@@ -41,6 +69,47 @@ const Reviews = () => {
     }
   };
 
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Authentication required",
+          description: "Please log in to add a review",
+        });
+        return;
+      }
+
+      const { error } = await supabase.from("review").insert({
+        mentor_name: values.mentor_name,
+        intern_name: values.intern_name,
+        review_date: format(values.review_date, "yyyy-MM-dd"),
+        review_topic: values.review_topic,
+        review_score: values.review_score,
+        user_id: user.id,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Review added successfully",
+        description: "The review has been saved to the database",
+      });
+
+      form.reset();
+      setIsDialogOpen(false);
+      fetchReviews();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error adding review",
+        description: error.message,
+      });
+    }
+  };
+
   const filteredReviews = reviews.filter(
     (review) =>
       review.intern_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -55,10 +124,126 @@ const Reviews = () => {
           <h1 className="text-3xl font-bold">Reviews</h1>
           <p className="text-muted-foreground">Manage and track all mentorship reviews</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Review
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Review
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Review</DialogTitle>
+              <DialogDescription>
+                Fill in the details to add a new mentorship review
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="mentor_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mentor Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter mentor name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="intern_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Intern Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter intern name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="review_date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Review Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="review_topic"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Review Topic</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter review topic" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="review_score"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Review Score (1-10)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="10"
+                          placeholder="Enter score"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full">
+                  Save Review
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
