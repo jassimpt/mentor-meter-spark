@@ -93,8 +93,8 @@ const Dashboard = () => {
     },
     {
       title: "Total Payment This Month",
-      value: `$${(reviewsThisMonth.length * currentRate).toFixed(2)}`,
-      change: `Rate: $${currentRate}/review`,
+      value: `₹${(reviewsThisMonth.length * currentRate).toFixed(2)}`,
+      change: `Rate: ₹${currentRate}/review`,
       icon: DollarSign,
       color: "text-green-600",
     },
@@ -107,7 +107,7 @@ const Dashboard = () => {
     },
     {
       title: "Total Payment Today",
-      value: `$${(reviewsToday.length * currentRate).toFixed(2)}`,
+      value: `₹${(reviewsToday.length * currentRate).toFixed(2)}`,
       change: `${reviewsToday.length} reviews`,
       icon: TrendingUp,
       color: "text-orange-600",
@@ -137,7 +137,7 @@ const Dashboard = () => {
             <div className="space-y-4">
               <div className="text-center">
                 <div className="text-4xl font-bold h-16 flex items-center justify-center border rounded-lg bg-muted">
-                  ${paymentRate || "0"}
+                  ₹{paymentRate || "0"}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
