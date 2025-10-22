@@ -75,6 +75,14 @@ export function AppSidebar() {
           </div>
         )}
 
+        {collapsed && (
+          <div className="flex justify-center py-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+          </div>
+        )}
+
         {/* Navigation Cards */}
         <nav className="space-y-2">
           {items.map((item) => (
@@ -86,25 +94,40 @@ export function AppSidebar() {
               {({ isActive }) => (
                 <Card 
                   className={cn(
-                    "p-3 transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer border-2",
+                    "transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer border-2",
+                    collapsed ? "p-2" : "p-3",
                     isActive 
                       ? "bg-primary text-primary-foreground border-primary shadow-lg" 
                       : "hover:border-primary/50 hover:bg-accent"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                      isActive 
-                        ? "bg-primary-foreground/20" 
-                        : "bg-primary/10"
-                    )}>
-                      <item.icon className={cn(
-                        "h-5 w-5",
-                        isActive ? "text-primary-foreground" : "text-primary"
-                      )} />
+                  {collapsed ? (
+                    <div className="flex items-center justify-center">
+                      <div className={cn(
+                        "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
+                        isActive 
+                          ? "bg-primary-foreground/20" 
+                          : "bg-primary/10"
+                      )}>
+                        <item.icon className={cn(
+                          "h-5 w-5",
+                          isActive ? "text-primary-foreground" : "text-primary"
+                        )} />
+                      </div>
                     </div>
-                    {!collapsed && (
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
+                        isActive 
+                          ? "bg-primary-foreground/20" 
+                          : "bg-primary/10"
+                      )}>
+                        <item.icon className={cn(
+                          "h-5 w-5",
+                          isActive ? "text-primary-foreground" : "text-primary"
+                        )} />
+                      </div>
                       <div className="flex-1">
                         <p className={cn(
                           "font-semibold text-sm",
@@ -119,8 +142,8 @@ export function AppSidebar() {
                           {item.description}
                         </p>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </Card>
               )}
             </NavLink>
@@ -131,39 +154,58 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 space-y-2">
         {/* Theme Toggle Card */}
         <Card 
-          className="p-3 cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-primary/50"
+          className={cn(
+            "cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-primary/50",
+            collapsed ? "p-2" : "p-3"
+          )}
           onClick={() => setTheme(theme === "light" ? "dark" : "light")}
         >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center relative">
-              <Sun className="h-5 w-5 text-primary absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="h-5 w-5 text-primary absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          {collapsed ? (
+            <div className="flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center relative">
+                <Sun className="h-5 w-5 text-primary absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="h-5 w-5 text-primary absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              </div>
             </div>
-            {!collapsed && (
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center relative">
+                <Sun className="h-5 w-5 text-primary absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="h-5 w-5 text-primary absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              </div>
               <div className="flex-1">
                 <p className="font-semibold text-sm">Theme</p>
                 <p className="text-xs text-muted-foreground">Toggle mode</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </Card>
 
         {/* Logout Card */}
         <Card 
-          className="p-3 cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-destructive/50 hover:bg-destructive/5"
+          className={cn(
+            "cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-destructive/50 hover:bg-destructive/5",
+            collapsed ? "p-2" : "p-3"
+          )}
           onClick={handleLogout}
         >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <LogOut className="h-5 w-5 text-destructive" />
+          {collapsed ? (
+            <div className="flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <LogOut className="h-5 w-5 text-destructive" />
+              </div>
             </div>
-            {!collapsed && (
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <LogOut className="h-5 w-5 text-destructive" />
+              </div>
               <div className="flex-1">
                 <p className="font-semibold text-sm">Logout</p>
                 <p className="text-xs text-muted-foreground">Sign out</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </Card>
       </SidebarFooter>
     </Sidebar>
