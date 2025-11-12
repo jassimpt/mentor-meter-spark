@@ -9,13 +9,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Star, CalendarIcon, Pencil } from "lucide-react";
+import { Search, Plus, Star, CalendarIcon, Pencil, FileText, X } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { generateReviewReport } from "@/utils/pdfGenerator";
 
 type Review = Tables<"review">;
 
@@ -33,6 +34,8 @@ const Reviews = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -154,12 +157,33 @@ const Reviews = () => {
     }
   };
 
-  const filteredReviews = reviews.filter(
-    (review) =>
+  const filteredReviews = reviews.filter((review) => {
+    // Search filter
+    const matchesSearch =
       review.intern_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       review.mentor_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      review.review_topic.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      review.review_topic.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Date filter
+    const reviewDate = new Date(review.review_date);
+    const matchesStartDate = !startDate || reviewDate >= startDate;
+    const matchesEndDate = !endDate || reviewDate <= endDate;
+
+    return matchesSearch && matchesStartDate && matchesEndDate;
+  });
+
+  const handleGenerateReport = () => {
+    generateReviewReport(filteredReviews, startDate, endDate);
+    toast({
+      title: "Report generated",
+      description: "Your PDF report has been downloaded successfully",
+    });
+  };
+
+  const clearDateFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -298,7 +322,7 @@ const Reviews = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
+          <div className="space-y-4 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -307,6 +331,80 @@ const Reviews = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
+            </div>
+
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm font-medium mb-2 block">Start Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Select start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-sm font-medium mb-2 block">End Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Select end date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {(startDate || endDate) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearDateFilters}
+                  className="flex-shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+
+              <Button
+                onClick={handleGenerateReport}
+                className="flex-shrink-0 gap-2"
+                variant="secondary"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Report
+              </Button>
             </div>
           </div>
 
