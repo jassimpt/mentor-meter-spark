@@ -9,7 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Star, CalendarIcon } from "lucide-react";
+import { Search, Plus, Star, CalendarIcon, Pencil } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ const Reviews = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -82,31 +83,74 @@ const Reviews = () => {
         return;
       }
 
-      const { error } = await supabase.from("review").insert({
-        mentor_name: values.mentor_name,
-        intern_name: values.intern_name,
-        review_date: format(values.review_date, "yyyy-MM-dd"),
-        review_topic: values.review_topic,
-        review_score: values.review_score,
-        user_id: user.id,
-      });
+      if (editingReview) {
+        // Update existing review
+        const { error } = await supabase
+          .from("review")
+          .update({
+            mentor_name: values.mentor_name,
+            intern_name: values.intern_name,
+            review_date: format(values.review_date, "yyyy-MM-dd"),
+            review_topic: values.review_topic,
+            review_score: values.review_score,
+          })
+          .eq("id", editingReview.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Review added successfully",
-        description: "The review has been saved to the database",
-      });
+        toast({
+          title: "Review updated successfully",
+          description: "The review has been updated in the database",
+        });
+      } else {
+        // Insert new review
+        const { error } = await supabase.from("review").insert({
+          mentor_name: values.mentor_name,
+          intern_name: values.intern_name,
+          review_date: format(values.review_date, "yyyy-MM-dd"),
+          review_topic: values.review_topic,
+          review_score: values.review_score,
+          user_id: user.id,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Review added successfully",
+          description: "The review has been saved to the database",
+        });
+      }
 
       form.reset();
+      setEditingReview(null);
       setIsDialogOpen(false);
       fetchReviews();
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error adding review",
+        title: editingReview ? "Error updating review" : "Error adding review",
         description: error.message,
       });
+    }
+  };
+
+  const handleEdit = (review: Review) => {
+    setEditingReview(review);
+    form.reset({
+      mentor_name: review.mentor_name,
+      intern_name: review.intern_name,
+      review_date: new Date(review.review_date),
+      review_topic: review.review_topic,
+      review_score: review.review_score,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingReview(null);
+      form.reset();
     }
   };
 
@@ -124,7 +168,7 @@ const Reviews = () => {
           <h1 className="text-3xl font-bold">Reviews</h1>
           <p className="text-muted-foreground">Manage and track all mentorship reviews</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -133,9 +177,9 @@ const Reviews = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add New Review</DialogTitle>
+              <DialogTitle>{editingReview ? "Edit Review" : "Add New Review"}</DialogTitle>
               <DialogDescription>
-                Fill in the details to add a new mentorship review
+                {editingReview ? "Update the review details" : "Fill in the details to add a new mentorship review"}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -238,7 +282,7 @@ const Reviews = () => {
                   )}
                 />
                 <Button type="submit" className="w-full">
-                  Save Review
+                  {editingReview ? "Update Review" : "Save Review"}
                 </Button>
               </form>
             </Form>
@@ -280,12 +324,13 @@ const Reviews = () => {
                     <TableHead>Mentor</TableHead>
                     <TableHead>Topic</TableHead>
                     <TableHead>Score</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReviews.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         No reviews found
                       </TableCell>
                     </TableRow>
@@ -305,6 +350,15 @@ const Reviews = () => {
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             <span className="font-bold">{review.review_score}</span>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(review)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
