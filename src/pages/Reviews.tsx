@@ -173,7 +173,9 @@ const Reviews = () => {
   });
 
   const handleGenerateReport = () => {
-    generateReviewReport(filteredReviews, startDate, endDate);
+    const paymentRateString = localStorage.getItem("perReviewPayment");
+    const paymentRate = paymentRateString ? parseFloat(paymentRateString) : 0;
+    generateReviewReport(filteredReviews, paymentRate, startDate, endDate);
     toast({
       title: "Report generated",
       description: "Your PDF report has been downloaded successfully",
