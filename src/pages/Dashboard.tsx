@@ -19,6 +19,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Area, Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -152,6 +159,47 @@ const Dashboard = () => {
   ];
 
   const recentReviews = reviews.slice(0, 5);
+
+  // Generate chart data for current month up to today
+  const chartData: any[] = [];
+  const dataMap = new Map();
+
+  // Clone start date so we don't mutate monthStart
+  const loopDate = new Date(monthStart);
+  while (loopDate <= today) {
+    const dateStr = format(loopDate, "MMM dd");
+    dataMap.set(dateStr, {
+      date: dateStr,
+      reviews: 0,
+      earnings: 0,
+    });
+    loopDate.setDate(loopDate.getDate() + 1);
+  }
+
+  reviewsThisMonth.forEach((r) => {
+    const d = new Date(r.review_date);
+    if (d <= today) {
+      const dateStr = format(d, "MMM dd");
+      if (dataMap.has(dateStr)) {
+        const item = dataMap.get(dateStr);
+        item.reviews += 1;
+        item.earnings += currentRate;
+      }
+    }
+  });
+
+  Array.from(dataMap.values()).forEach((v) => chartData.push(v));
+
+  const chartConfig = {
+    reviews: {
+      label: "Reviews",
+      color: "hsl(221, 83%, 53%)",
+    },
+    earnings: {
+      label: "Earnings (₹)",
+      color: "#10b981",
+    },
+  } satisfies ChartConfig;
 
   return (
     <div className="space-y-8 max-w-7xl">
@@ -320,6 +368,78 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* Monthly Performance Chart */}
+      <Card className="border-border/40 bg-card/80 backdrop-blur-sm shadow-sm group hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Performance Overview
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Daily review counts and earnings for {format(today, "MMMM yyyy")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="fillEarnings" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={12}
+                tickFormatter={(value) => value.slice(0, 3) + " " + value.slice(4)}
+                style={{ fontSize: '11px', fill: "hsl(var(--muted-foreground))" }}
+              />
+              <YAxis
+                yAxisId="left"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}`}
+                style={{ fontSize: '11px', fill: "hsl(var(--muted-foreground))" }}
+                width={40}
+                allowDecimals={false}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `₹${value}`}
+                style={{ fontSize: '11px', fill: "hsl(var(--muted-foreground))" }}
+                width={50}
+              />
+              <ChartTooltip
+                cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1, strokeDasharray: "4 4" }}
+                content={<ChartTooltipContent indicator="dot" />}
+              />
+              <Area
+                yAxisId="right"
+                type="monotone"
+                dataKey="earnings"
+                stroke="#10b981"
+                fill="url(#fillEarnings)"
+                strokeWidth={2}
+                activeDot={{ r: 6, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}
+              />
+              <Bar
+                yAxisId="left"
+                dataKey="reviews"
+                fill="hsl(221, 83%, 53%)"
+                radius={[4, 4, 0, 0]}
+                barSize={24}
+              />
+            </ComposedChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
       {/* Content Grid — Bento Style */}
       <div className="grid gap-4 lg:grid-cols-3">
