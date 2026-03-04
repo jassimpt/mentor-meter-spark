@@ -1,4 +1,12 @@
-import { LayoutDashboard, ClipboardList, Calendar, LogOut, Sun, Moon, Sparkles } from "lucide-react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Calendar,
+  LogOut,
+  Sun,
+  Moon,
+} from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -6,30 +14,31 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Card } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
-const items = [
-  { 
-    title: "Dashboard", 
-    url: "/dashboard", 
+const navItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
     icon: LayoutDashboard,
-    description: "Overview & stats"
   },
-  { 
-    title: "Reviews", 
-    url: "/reviews", 
+  {
+    title: "Reviews",
+    url: "/reviews",
     icon: ClipboardList,
-    description: "Manage reviews"
   },
-  { 
-    title: "Schedules", 
-    url: "/schedules", 
+  {
+    title: "Schedules",
+    url: "/schedules",
     icon: Calendar,
-    description: "View schedules"
   },
 ];
 
@@ -57,157 +66,158 @@ export function AppSidebar() {
     }
   };
 
-  return (
-    <Sidebar collapsible="icon" className="border-r">
-      <SidebarContent className="p-4 space-y-4">
-        {/* Brand Section */}
+  const NavItem = ({
+    item,
+    isActive,
+  }: {
+    item: (typeof navItems)[0];
+    isActive: boolean;
+  }) => {
+    const content = (
+      <div
+        className={cn(
+          "flex items-center rounded-xl transition-all duration-200 group/nav cursor-pointer",
+          collapsed ? "justify-center p-2.5 mx-auto w-11 h-11" : "gap-3 px-3 py-2.5",
+          isActive
+            ? "bg-primary text-white shadow-md shadow-primary/20"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        )}
+      >
+        <item.icon
+          className={cn(
+            "h-[18px] w-[18px] flex-shrink-0 transition-colors",
+            isActive ? "text-white" : "text-muted-foreground group-hover/nav:text-foreground"
+          )}
+        />
         {!collapsed && (
-          <div className="px-2 py-4 mb-2">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <span className={cn("text-sm font-medium", isActive ? "text-white" : "")}>
+            {item.title}
+          </span>
+        )}
+      </div>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8} className="font-medium">
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return content;
+  };
+
+  const ActionButton = ({
+    icon: Icon,
+    label,
+    onClick,
+    variant = "default",
+  }: {
+    icon: React.ElementType;
+    label: string;
+    onClick: () => void;
+    variant?: "default" | "danger";
+  }) => {
+    const content = (
+      <button
+        onClick={onClick}
+        className={cn(
+          "flex items-center rounded-xl transition-all duration-200 w-full",
+          collapsed ? "justify-center p-2.5 mx-auto w-11 h-11" : "gap-3 px-3 py-2.5",
+          variant === "danger"
+            ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        )}
+      >
+        {variant === "default" ? (
+          <div className="relative h-[18px] w-[18px] flex-shrink-0">
+            <Sun className="h-[18px] w-[18px] absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="h-[18px] w-[18px] absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </div>
+        ) : (
+          <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+        )}
+        {!collapsed && <span className="text-sm font-medium">{label}</span>}
+      </button>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8} className="font-medium">
+            {label}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return content;
+  };
+
+  return (
+    <Sidebar collapsible="icon" className="border-r border-border/40 bg-card/50 backdrop-blur-sm">
+      <SidebarContent className={cn("flex flex-col h-full", collapsed ? "p-2" : "p-3")}>
+        {/* Brand */}
+        <div className={cn("mb-6", collapsed ? "py-3" : "px-1 py-4")}>
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md shadow-primary/15 cursor-default">
+                    <BrandLogo className="h-[18px] w-[18px] text-white" />
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8} className="font-bold">
                 MentorMeter
-              </h2>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md shadow-primary/15 flex-shrink-0">
+                <BrandLogo className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-gradient leading-tight">
+                  MentorMeter
+                </h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Track & Manage
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground px-1">Track & Manage Reviews</p>
-          </div>
-        )}
+          )}
+        </div>
 
-        {collapsed && (
-          <div className="flex justify-center py-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Cards */}
-        <nav className="space-y-2">
-          {items.map((item) => (
-            <NavLink
-              key={item.title}
-              to={item.url}
-              className={({ isActive }) => "block"}
-            >
-              {({ isActive }) => (
-                <Card 
-                  className={cn(
-                    "transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer border-2",
-                    collapsed ? "p-2" : "p-3",
-                    isActive 
-                      ? "bg-primary text-primary-foreground border-primary shadow-lg" 
-                      : "hover:border-primary/50 hover:bg-accent"
-                  )}
-                >
-                  {collapsed ? (
-                    <div className="flex items-center justify-center">
-                      <div className={cn(
-                        "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                        isActive 
-                          ? "bg-primary-foreground/20" 
-                          : "bg-primary/10"
-                      )}>
-                        <item.icon className={cn(
-                          "h-5 w-5",
-                          isActive ? "text-primary-foreground" : "text-primary"
-                        )} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                        isActive 
-                          ? "bg-primary-foreground/20" 
-                          : "bg-primary/10"
-                      )}>
-                        <item.icon className={cn(
-                          "h-5 w-5",
-                          isActive ? "text-primary-foreground" : "text-primary"
-                        )} />
-                      </div>
-                      <div className="flex-1">
-                        <p className={cn(
-                          "font-semibold text-sm",
-                          isActive ? "text-primary-foreground" : ""
-                        )}>
-                          {item.title}
-                        </p>
-                        <p className={cn(
-                          "text-xs",
-                          isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-                        )}>
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              )}
+        {/* Nav */}
+        <nav className="space-y-1 flex-1">
+          {navItems.map((item) => (
+            <NavLink key={item.title} to={item.url}>
+              {({ isActive }) => <NavItem item={item} isActive={isActive} />}
             </NavLink>
           ))}
         </nav>
+
+        {/* Footer */}
+        <SidebarFooter className="p-0 mt-auto space-y-1 border-t border-border/40 pt-3">
+          <ActionButton
+            icon={Sun}
+            label={theme === "dark" ? "Light Mode" : "Dark Mode"}
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          />
+          <ActionButton
+            icon={LogOut}
+            label="Logout"
+            onClick={handleLogout}
+            variant="danger"
+          />
+        </SidebarFooter>
       </SidebarContent>
-
-      <SidebarFooter className="p-4 space-y-2">
-        {/* Theme Toggle Card */}
-        <Card 
-          className={cn(
-            "cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-primary/50",
-            collapsed ? "p-2" : "p-3"
-          )}
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-        >
-          {collapsed ? (
-            <div className="flex items-center justify-center">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center relative">
-                <Sun className="h-5 w-5 text-primary absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="h-5 w-5 text-primary absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center relative">
-                <Sun className="h-5 w-5 text-primary absolute rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="h-5 w-5 text-primary absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm">Theme</p>
-                <p className="text-xs text-muted-foreground">Toggle mode</p>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        {/* Logout Card */}
-        <Card 
-          className={cn(
-            "cursor-pointer hover:scale-105 transition-all duration-200 hover:shadow-md hover:border-destructive/50 hover:bg-destructive/5",
-            collapsed ? "p-2" : "p-3"
-          )}
-          onClick={handleLogout}
-        >
-          {collapsed ? (
-            <div className="flex items-center justify-center">
-              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <LogOut className="h-5 w-5 text-destructive" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <LogOut className="h-5 w-5 text-destructive" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm">Logout</p>
-                <p className="text-xs text-muted-foreground">Sign out</p>
-              </div>
-            </div>
-          )}
-        </Card>
-      </SidebarFooter>
     </Sidebar>
   );
 }
