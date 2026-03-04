@@ -9,6 +9,10 @@ import {
   ArrowUpRight,
   ClipboardList,
   History,
+  CheckCircle,
+  Clock as ClockIcon,
+  Bell,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,16 +39,27 @@ import {
   startOfDay,
   endOfDay,
   subMonths,
+  isPast,
+  isToday,
+  differenceInMinutes,
+  parseISO,
 } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentRate, setPaymentRate] = useState("");
   const [currentRate, setCurrentRate] = useState<number>(0);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completeScheduleData, setCompleteScheduleData] = useState<any | null>(null);
+  const [reviewScore, setReviewScore] = useState<number>(5);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const savedRate = localStorage.getItem("perReviewPayment");
@@ -52,7 +67,28 @@ const Dashboard = () => {
       setCurrentRate(parseFloat(savedRate));
     }
     fetchReviews();
+    fetchSchedules();
   }, []);
+
+  const fetchSchedules = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("schedule")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("schedule_date", { ascending: true });
+
+      if (error) throw error;
+      setSchedules(data || []);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+    }
+  };
 
   const fetchReviews = async () => {
     try {
@@ -200,6 +236,98 @@ const Dashboard = () => {
       color: "#10b981",
     },
   } satisfies ChartConfig;
+
+  // Schedules reminders logic
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("schedule")
+        .update({ schedule_status: newStatus })
+        .eq("id", id);
+      if (error) throw error;
+      fetchSchedules();
+
+      if (newStatus === "cancelled") {
+        toast({
+          title: "Schedule Cancelled",
+          description: "The schedule has been cancelled.",
+        });
+      }
+    } catch (error: any) {
+      console.error(`Error updating status to ${newStatus}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Error updating status",
+        description: error.message,
+      });
+    }
+  };
+
+  const handleCompleteSchedule = async () => {
+    if (!completeScheduleData) return;
+    setIsSubmittingReview(true);
+
+    try {
+      // 1. Mark schedule as completed
+      const { error: scheduleError } = await supabase
+        .from("schedule")
+        .update({ schedule_status: "completed" })
+        .eq("id", completeScheduleData.id);
+
+      if (scheduleError) throw scheduleError;
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 2. Create a review record from the schedule data
+      if (user) {
+        const { error: reviewError } = await supabase
+          .from("review")
+          .insert({
+            user_id: user.id,
+            mentor_name: completeScheduleData.mentor_name,
+            intern_name: completeScheduleData.intern_name,
+            review_topic: completeScheduleData.session_topic,
+            review_date: new Date().toISOString().split('T')[0], // Give today's date or schedule date? Let's use today's date or schedule date. using schedule_date
+            review_score: reviewScore
+          });
+
+        if (reviewError) throw reviewError;
+      }
+
+      toast({
+        title: "Schedule Completed",
+        description: "The schedule has been marked as completed and saved as a review.",
+      });
+
+      setCompleteScheduleData(null);
+      setReviewScore(5);
+      fetchSchedules();
+      fetchReviews(); // refresh reviews to reflect the new one
+    } catch (error: any) {
+      console.error("Error completing schedule:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const pendingSchedules = schedules.filter(s => s.schedule_status === "pending");
+  const upcomingSchedules = pendingSchedules.filter(s => {
+    const scheduleDateTime = new Date(`${s.schedule_date}T${s.schedule_time}`);
+    // Show as upcoming if it's today and in the future, or up to 2 hours away
+    if (isPast(scheduleDateTime)) return false;
+    if (isToday(scheduleDateTime)) return true;
+    return false;
+  }).slice(0, 2);
+
+  const passedPendingSchedules = pendingSchedules.filter(s => {
+    const scheduleDateTime = new Date(`${s.schedule_date}T${s.schedule_time}`);
+    return isPast(scheduleDateTime);
+  }).slice(0, 2);
 
   return (
     <div className="space-y-8 max-w-7xl">
@@ -519,68 +647,207 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions — Side card */}
-        <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Quick Actions
-            </CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Frequently used shortcuts
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <button
-              onClick={() => navigate("/reviews")}
-              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
-            >
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
-                <ClipboardList className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Add Review</p>
-                <p className="text-xs text-muted-foreground">
-                  Log a new session
-                </p>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
-            </button>
+        {/* Schedule Reminders & Quick Actions — Side column */}
+        <div className="space-y-4">
 
-            <button
-              onClick={() => setIsPaymentModalOpen(true)}
-              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
-            >
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Payment Rate</p>
-                <p className="text-xs text-muted-foreground">
-                  ₹{currentRate}/review
+          {/* Upcoming & Pending Reminders */}
+          {(upcomingSchedules.length > 0 || passedPendingSchedules.length > 0) && (
+            <Card className="border-border/40 bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
+              <div className="h-1 w-full bg-gradient-to-r from-amber-400 to-orange-500"></div>
+              <CardHeader className="pb-3 pt-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-amber-500" />
+                  Action Required
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your pending schedule updates
                 </p>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
-            </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {upcomingSchedules.map(schedule => (
+                  <div key={schedule.id} className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase font-bold text-amber-600 dark:text-amber-500">
+                          <ClockIcon className="h-3 w-3" />
+                          Upcoming Session
+                        </div>
+                        <p className="text-sm font-semibold truncate max-w-[160px]">{schedule.intern_name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Time: {schedule.schedule_time}</p>
+                      </div>
+                      {schedule.meet_link && (
+                        <a
+                          href={schedule.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium flex items-center shadow-sm shadow-amber-500/20 transition-colors"
+                        >
+                          Join Meet
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
 
-            <button
-              onClick={() => navigate("/schedules")}
-              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
-                <Calendar className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Schedules</p>
-                <p className="text-xs text-muted-foreground">
-                  Coming soon
-                </p>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
-            </button>
+                {passedPendingSchedules.map(schedule => (
+                  <div key={schedule.id} className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase font-bold text-primary">
+                          <History className="h-3 w-3" />
+                          Session Passed
+                        </div>
+                        <p className="text-sm font-semibold truncate max-w-[160px]">{schedule.intern_name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{format(parseISO(schedule.schedule_date), "MMM dd")} • {schedule.schedule_time}</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Button
+                          size="sm"
+                          onClick={() => setCompleteScheduleData(schedule)}
+                          className="h-7 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white shadow-sm shadow-green-500/20"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Complete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleStatusUpdate(schedule.id, "cancelled")}
+                          className="h-7 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400"
+                        >
+                          <XCircle className="h-3 w-3" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-          </CardContent>
-        </Card>
+          {/* Quick Actions Card */}
+          <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">
+                Quick Actions
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Frequently used shortcuts
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <button
+                onClick={() => navigate("/reviews")}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
+                  <ClipboardList className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Add Review</p>
+                  <p className="text-xs text-muted-foreground">
+                    Log a new session
+                  </p>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
+              </button>
+
+              <button
+                onClick={() => setIsPaymentModalOpen(true)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Payment Rate</p>
+                  <p className="text-xs text-muted-foreground">
+                    ₹{currentRate}/review
+                  </p>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
+              </button>
+
+              <button
+                onClick={() => navigate("/schedules")}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 group/action text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover/action:scale-105 transition-transform">
+                  <Calendar className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Schedules</p>
+                  <p className="text-xs text-muted-foreground">
+                    Coming soon
+                  </p>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
+              </button>
+
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Complete Schedule Modal */}
+      <Dialog open={!!completeScheduleData} onOpenChange={(open) => !open && setCompleteScheduleData(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Complete Schedule</DialogTitle>
+            <DialogDescription>
+              Mark {completeScheduleData?.intern_name}'s session as completed and save it as a review. Select a review score out of 10.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span>Review Score</span>
+                <span className="text-primary text-xl font-bold">{reviewScore}/10</span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                  <Button
+                    key={score}
+                    type="button"
+                    variant={reviewScore >= score ? "default" : "outline"}
+                    className={cn(
+                      "h-10 w-full transition-all duration-200",
+                      reviewScore >= score
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground hover:border-primary/50"
+                    )}
+                    onClick={() => setReviewScore(score)}
+                  >
+                    {score}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCompleteScheduleData(null)}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCompleteSchedule}
+                disabled={isSubmittingReview}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isSubmittingReview ? "Saving..." : "Save as Review"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
