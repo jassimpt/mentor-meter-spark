@@ -13,6 +13,7 @@ import {
   Clock as ClockIcon,
   Bell,
   XCircle,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -263,6 +264,14 @@ const Dashboard = () => {
     }
   };
 
+  const handleCopyLink = (link: string) => {
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link Copied",
+      description: "Meet link copied to clipboard",
+    });
+  };
+
   const handleCompleteSchedule = async () => {
     if (!completeScheduleData) return;
     setIsSubmittingReview(true);
@@ -428,6 +437,139 @@ const Dashboard = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Action Required Alert Banner */}
+      {(upcomingSchedules.length > 0 || passedPendingSchedules.length > 0) && (
+        <div className="rounded-[1.25rem] border border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/5 shadow-sm">
+          <div className="p-4 sm:p-5">
+            <div className="flex gap-3 items-center mb-4">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-blue-950 dark:text-blue-300 tracking-tight">
+                  Action Required
+                </h2>
+                <p className="text-xs font-medium text-blue-700/80 dark:text-blue-400/80 mt-0.5">
+                  You have pending schedules that need your attention
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {upcomingSchedules.map(schedule => (
+                <div key={schedule.id} className="p-3.5 rounded-xl border border-blue-500/10 bg-white/60 dark:bg-background/60 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all group">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400">
+                          Upcoming Session
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold truncate text-foreground">{schedule.intern_name}</p>
+                      <div className="flex items-center gap-1.5 mt-1 text-xs font-medium text-muted-foreground">
+                        <ClockIcon className="h-3.5 w-3.5 text-blue-500/70" />
+                        <span>{format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}</span>
+                      </div>
+                    </div>
+                    {schedule.meet_link && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={schedule.meet_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-8 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold flex items-center justify-center shadow-sm transition-colors"
+                        >
+                          Join Meet
+                        </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyLink(schedule.meet_link as string)}
+                          className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground border-blue-500/10 hover:border-blue-500/30 hover:bg-white/50"
+                          title="Copy link"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {passedPendingSchedules.map(schedule => (
+                <div key={schedule.id} className="p-3.5 rounded-xl border border-primary/10 bg-white/60 dark:bg-background/60 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-primary/30 transition-all group">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-primary">
+                          Session Passed
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold truncate text-foreground">{schedule.intern_name}</p>
+                      <div className="flex items-center gap-1.5 mt-1 text-xs font-medium text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                        <span>{format(parseISO(schedule.schedule_date), "MMM dd")} • {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      {schedule.meet_link && (
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={schedule.meet_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-7 px-2.5 rounded-md bg-background border border-border/50 hover:bg-muted text-[10px] font-medium flex items-center text-foreground transition-colors"
+                          >
+                            Join Meet
+                          </a>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopyLink(schedule.meet_link as string)}
+                            className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-foreground"
+                            title="Copy link"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          onClick={() => setCompleteScheduleData(schedule)}
+                          className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white shadow-sm transition-colors"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          <span>Done</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleStatusUpdate(schedule.id, "cancelled")}
+                          className="h-8 w-8 p-0 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30 dark:hover:text-red-400 transition-colors"
+                          title="Cancel Schedule"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Previous Month Performance */}
       <div className="grid sm:grid-cols-2 gap-4 mb-2">
@@ -649,82 +791,6 @@ const Dashboard = () => {
 
         {/* Schedule Reminders & Quick Actions — Side column */}
         <div className="space-y-4">
-
-          {/* Upcoming & Pending Reminders */}
-          {(upcomingSchedules.length > 0 || passedPendingSchedules.length > 0) && (
-            <Card className="border-border/40 bg-card/80 backdrop-blur-sm shadow-sm overflow-hidden">
-              <div className="h-1 w-full bg-gradient-to-r from-amber-400 to-orange-500"></div>
-              <CardHeader className="pb-3 pt-4">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-amber-500" />
-                  Action Required
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Your pending schedule updates
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {upcomingSchedules.map(schedule => (
-                  <div key={schedule.id} className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 transition-all">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase font-bold text-amber-600 dark:text-amber-500">
-                          <ClockIcon className="h-3 w-3" />
-                          Upcoming Session
-                        </div>
-                        <p className="text-sm font-semibold truncate max-w-[160px]">{schedule.intern_name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Time: {schedule.schedule_time}</p>
-                      </div>
-                      {schedule.meet_link && (
-                        <a
-                          href={schedule.meet_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium flex items-center shadow-sm shadow-amber-500/20 transition-colors"
-                        >
-                          Join Meet
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {passedPendingSchedules.map(schedule => (
-                  <div key={schedule.id} className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 transition-all">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase font-bold text-primary">
-                          <History className="h-3 w-3" />
-                          Session Passed
-                        </div>
-                        <p className="text-sm font-semibold truncate max-w-[160px]">{schedule.intern_name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{format(parseISO(schedule.schedule_date), "MMM dd")} • {schedule.schedule_time}</p>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={() => setCompleteScheduleData(schedule)}
-                          className="h-7 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white shadow-sm shadow-green-500/20"
-                        >
-                          <CheckCircle className="h-3 w-3" />
-                          Complete
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleStatusUpdate(schedule.id, "cancelled")}
-                          className="h-7 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400"
-                        >
-                          <XCircle className="h-3 w-3" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Quick Actions Card */}
           <Card className="border-border/40 bg-card/80 backdrop-blur-sm">

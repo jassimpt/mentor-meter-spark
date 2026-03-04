@@ -62,6 +62,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Copy,
 } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { useForm } from "react-hook-form";
@@ -182,6 +183,14 @@ const Schedules = () => {
         description: error.message,
       });
     }
+  };
+
+  const handleCopyLink = (link: string) => {
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link Copied",
+      description: "Meet link copied to clipboard",
+    });
   };
 
   const handleCompleteSchedule = async () => {
@@ -739,7 +748,7 @@ const Schedules = () => {
                             </p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {schedule.schedule_time}
+                              {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}
                             </p>
                           </div>
                         </TableCell>
@@ -758,15 +767,26 @@ const Schedules = () => {
                         </TableCell>
                         <TableCell className="py-4">
                           {schedule.meet_link ? (
-                            <a
-                              href={schedule.meet_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                            >
-                              <LinkIcon className="h-3.5 w-3.5" />
-                              <span className="underline underline-offset-2">Join Meet</span>
-                            </a>
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={schedule.meet_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                              >
+                                <LinkIcon className="h-4 w-4" />
+                                <span className="underline underline-offset-4 decoration-blue-500/30 hover:decoration-blue-500">Join Meet</span>
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCopyLink(schedule.meet_link as string)}
+                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                title="Copy link"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No link provided</span>
                           )}
