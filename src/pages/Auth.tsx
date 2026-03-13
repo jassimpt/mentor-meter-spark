@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { api, tokenStore } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
@@ -15,6 +15,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+
+interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -29,23 +35,24 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: error.message,
+    try {
+      const data = await api.post<TokenResponse>("/api/auth/login", {
+        email,
+        password,
       });
-    } else {
+
+      tokenStore.set(data.access_token, data.refresh_token);
       toast({
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
       navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message,
+      });
     }
 
     setLoading(false);
@@ -55,27 +62,24 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          name,
-        },
-      },
-    });
+    try {
+      const data = await api.post<TokenResponse>("/api/auth/register", {
+        email,
+        password,
+        full_name: name,
+      });
 
-    if (error) {
+      tokenStore.set(data.access_token, data.refresh_token);
+      toast({
+        title: "Account created!",
+        description: "Welcome to MentorMeter!",
+      });
+      navigate("/dashboard");
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Signup failed",
         description: error.message,
-      });
-    } else {
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
       });
     }
 

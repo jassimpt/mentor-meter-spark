@@ -1,36 +1,35 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
+import { api, tokenStore } from "@/lib/api";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    const checkAuth = async () => {
+      if (!tokenStore.isLoggedIn()) {
+        setAuthenticated(false);
+        return;
       }
-    );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+      try {
+        // Verify the token is still valid by hitting the profile endpoint
+        await api.get("/api/users/me");
+        setAuthenticated(true);
+      } catch {
+        tokenStore.clear();
+        setAuthenticated(false);
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
-  if (loading) {
+  if (authenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
@@ -38,7 +37,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user) {
+  if (!authenticated) {
     return <Navigate to="/auth" replace />;
   }
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { tokenStore } from "@/lib/api";
 import {
   ClipboardList,
   BarChart3,
@@ -20,30 +19,16 @@ import {
 import { BrandLogo } from "@/components/BrandLogo";
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    if (tokenStore.isLoggedIn()) {
+      navigate("/dashboard");
+    } else {
       setLoading(false);
-      if (session?.user) {
-        navigate("/dashboard");
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        navigate("/dashboard");
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, [navigate]);
 
   if (loading) {

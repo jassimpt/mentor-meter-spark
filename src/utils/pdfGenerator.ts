@@ -1,14 +1,18 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Tables } from "@/integrations/supabase/types";
 
-type Review = Tables<"review">;
+interface Review {
+  mentor_name: string;
+  intern_name: string;
+  review_date: string;
+  review_topic: string;
+  review_score: number;
+}
 
-export const generateReviewReport = (
+export const generateReviewsPdf = (
   reviews: Review[],
   paymentRate: number,
-  startDate?: Date,
-  endDate?: Date
+  filterMonth?: string
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();

@@ -1,21 +1,14 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -35,77 +28,102 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Filter,
+  ArrowUpDown,
+  RotateCcw,
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle,
+  Link as LinkIcon,
+} from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Search,
-  Plus,
-  CalendarIcon,
-  Pencil,
-  Filter,
-  Trash2,
-  X,
-  Link as LinkIcon,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Copy,
-} from "lucide-react";
-import { Tables } from "@/integrations/supabase/types";
+import { Calendar } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { format, isPast, isToday, parseISO } from "date-fns";
+import { z } from "zod";
+import { format, parseISO, isPast, isToday } from "date-fns";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-type Schedule = Tables<"schedule">;
+interface ScheduleData {
+  id: string;
+  user_id: string;
+  mentor_name: string;
+  intern_name: string;
+  schedule_date: string;
+  schedule_time: string;
+  session_topic: string;
+  meet_link: string | null;
+  schedule_status: string;
+  created_at: string;
+  updated_at: string;
+}
 
-const formSchema = z.object({
+const scheduleSchema = z.object({
   mentor_name: z.string().min(1, "Mentor name is required"),
   intern_name: z.string().min(1, "Intern name is required"),
-  schedule_date: z.date({ required_error: "Schedule date is required" }),
-  schedule_time: z.string().min(1, "Schedule time is required"),
-  session_topic: z.string().min(1, "Session topic is required"),
-  meet_link: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  schedule_date: z.string().min(1, "Date is required"),
+  schedule_time: z.string().min(1, "Time is required"),
+  session_topic: z.string().min(1, "Topic is required"),
+  meet_link: z.string().optional(),
 });
 
+type ScheduleFormData = z.infer<typeof scheduleSchema>;
+type SortField = "schedule_date" | "intern_name" | "mentor_name" | "schedule_status";
+type SortDirection = "asc" | "desc";
+
 const Schedules = () => {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
-  const [startDate, setStartDate] = useState<Date | undefined>();
-  const [endDate, setEndDate] = useState<Date | undefined>();
-  const [showFilters, setShowFilters] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleData | null>(null);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
-  const [completeScheduleData, setCompleteScheduleData] = useState<Schedule | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [completeScheduleData, setCompleteScheduleData] = useState<ScheduleData | null>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Search / Filter / Sort
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("schedule_date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleSchema),
     defaultValues: {
       mentor_name: "",
       intern_name: "",
+      schedule_date: format(new Date(), "yyyy-MM-dd"),
+      schedule_time: "09:00",
       session_topic: "",
-      schedule_time: "10:00",
       meet_link: "",
     },
   });
@@ -116,13 +134,8 @@ const Schedules = () => {
 
   const fetchSchedules = async () => {
     try {
-      const { data, error } = await supabase
-        .from("schedule")
-        .select("*")
-        .order("schedule_date", { ascending: false });
-
-      if (error) throw error;
-      setSchedules(data || []);
+      const data = await api.get<ScheduleData[]>("/api/schedules");
+      setSchedules(data);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -134,21 +147,62 @@ const Schedules = () => {
     }
   };
 
+  const onSubmit = async (data: ScheduleFormData) => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...data,
+        meet_link: data.meet_link || null,
+      };
+
+      if (editingSchedule) {
+        await api.put(`/api/schedules/${editingSchedule.id}`, payload);
+        toast({
+          title: "Schedule updated",
+          description: "The schedule has been updated successfully.",
+        });
+      } else {
+        await api.post("/api/schedules", payload);
+        toast({
+          title: "Schedule added",
+          description: "New schedule has been added successfully.",
+        });
+      }
+      resetForm();
+      fetchSchedules();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error saving schedule",
+        description: error.message,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (schedule: ScheduleData) => {
+    setEditingSchedule(schedule);
+    form.reset({
+      mentor_name: schedule.mentor_name,
+      intern_name: schedule.intern_name,
+      schedule_date: schedule.schedule_date,
+      schedule_time: schedule.schedule_time,
+      session_topic: schedule.session_topic,
+      meet_link: schedule.meet_link || "",
+    });
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from("schedule")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
+      await api.delete(`/api/schedules/${id}`);
       toast({
         title: "Schedule deleted",
-        description: "The schedule has been successfully removed.",
+        description: "The schedule has been deleted.",
       });
-
+      setDeletingScheduleId(null);
       fetchSchedules();
     } catch (error: any) {
       toast({
@@ -158,39 +212,7 @@ const Schedules = () => {
       });
     } finally {
       setIsDeleting(false);
-      setDeletingScheduleId(null);
     }
-  };
-
-  const handleStatusUpdate = async (id: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from("schedule")
-        .update({ schedule_status: newStatus })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Status updated",
-        description: `Schedule marked as ${newStatus}.`,
-      });
-      fetchSchedules();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error updating status",
-        description: error.message,
-      });
-    }
-  };
-
-  const handleCopyLink = (link: string) => {
-    navigator.clipboard.writeText(link);
-    toast({
-      title: "Link Copied",
-      description: "Meet link copied to clipboard",
-    });
   };
 
   const handleCompleteSchedule = async () => {
@@ -198,29 +220,9 @@ const Schedules = () => {
     setIsSubmittingReview(true);
 
     try {
-      const { error: scheduleError } = await supabase
-        .from("schedule")
-        .update({ schedule_status: "completed" })
-        .eq("id", completeScheduleData.id);
-
-      if (scheduleError) throw scheduleError;
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        const { error: reviewError } = await supabase
-          .from("review")
-          .insert({
-            user_id: user.id,
-            mentor_name: completeScheduleData.mentor_name,
-            intern_name: completeScheduleData.intern_name,
-            review_topic: completeScheduleData.session_topic,
-            review_date: new Date().toISOString().split('T')[0],
-            review_score: reviewScore
-          });
-
-        if (reviewError) throw reviewError;
-      }
+      await api.post(`/api/schedules/${completeScheduleData.id}/complete`, {
+        review_score: reviewScore,
+      });
 
       toast({
         title: "Schedule Completed",
@@ -241,127 +243,69 @@ const Schedules = () => {
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setSubmitting(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        toast({
-          variant: "destructive",
-          title: "Authentication required",
-          description: "Please log in to add a schedule",
-        });
-        return;
-      }
-
-      if (editingSchedule) {
-        const { error } = await supabase
-          .from("schedule")
-          .update({
-            mentor_name: values.mentor_name,
-            intern_name: values.intern_name,
-            schedule_date: format(values.schedule_date, "yyyy-MM-dd"),
-            schedule_time: values.schedule_time,
-            session_topic: values.session_topic,
-            meet_link: values.meet_link || null,
-          })
-          .eq("id", editingSchedule.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Schedule updated successfully",
-          description: "The schedule has been updated in the database",
-        });
-      } else {
-        const { error } = await supabase.from("schedule").insert({
-          mentor_name: values.mentor_name,
-          intern_name: values.intern_name,
-          schedule_date: format(values.schedule_date, "yyyy-MM-dd"),
-          schedule_time: values.schedule_time,
-          session_topic: values.session_topic,
-          meet_link: values.meet_link || null,
-          schedule_status: "pending",
-          user_id: user.id,
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Schedule added successfully",
-          description: "The schedule has been saved to the database",
-        });
-      }
-
-      form.reset();
-      setEditingSchedule(null);
-      setIsDialogOpen(false);
-      setSubmitting(false);
-      fetchSchedules();
-    } catch (error: any) {
-      setSubmitting(false);
-      toast({
-        variant: "destructive",
-        title: editingSchedule
-          ? "Error updating schedule"
-          : "Error adding schedule",
-        description: error.message,
-      });
-    }
-  };
-
-  const handleEdit = (schedule: Schedule) => {
-    setEditingSchedule(schedule);
+  const resetForm = () => {
+    setEditingSchedule(null);
+    setIsModalOpen(false);
     form.reset({
-      mentor_name: schedule.mentor_name,
-      intern_name: schedule.intern_name,
-      schedule_date: parseISO(schedule.schedule_date),
-      schedule_time: schedule.schedule_time,
-      session_topic: schedule.session_topic,
-      meet_link: schedule.meet_link || "",
+      mentor_name: "",
+      intern_name: "",
+      schedule_date: format(new Date(), "yyyy-MM-dd"),
+      schedule_time: "09:00",
+      session_topic: "",
+      meet_link: "",
     });
-    setIsDialogOpen(true);
   };
 
-  const handleDialogChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      setEditingSchedule(null);
-      form.reset();
+  // Filter + Search + Sort
+  const filteredSchedules = schedules
+    .filter((schedule) => {
+      if (filterStatus !== "all" && schedule.schedule_status !== filterStatus) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          schedule.mentor_name.toLowerCase().includes(q) ||
+          schedule.intern_name.toLowerCase().includes(q) ||
+          schedule.session_topic.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "schedule_date":
+          cmp = a.schedule_date.localeCompare(b.schedule_date);
+          break;
+        case "intern_name":
+          cmp = a.intern_name.localeCompare(b.intern_name);
+          break;
+        case "mentor_name":
+          cmp = a.mentor_name.localeCompare(b.mentor_name);
+          break;
+        case "schedule_status":
+          cmp = a.schedule_status.localeCompare(b.schedule_status);
+          break;
+      }
+      return sortDirection === "desc" ? -cmp : cmp;
+    });
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
     }
   };
 
-  const filteredSchedules = schedules.filter((schedule) => {
-    const matchesSearch =
-      schedule.intern_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      schedule.mentor_name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      schedule.session_topic
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-
-    const scheduleDate = parseISO(schedule.schedule_date);
-    const matchesStartDate = !startDate || scheduleDate >= startDate;
-    const matchesEndDate = !endDate || scheduleDate <= endDate;
-
-    return matchesSearch && matchesStartDate && matchesEndDate;
-  });
-
-  const clearDateFilters = () => {
-    setStartDate(undefined);
-    setEndDate(undefined);
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("all");
+    setSortField("schedule_date");
+    setSortDirection("desc");
   };
 
-  const isSchedulePast = (date: string, time: string) => {
-    const scheduleDateTime = new Date(`${date}T${time}`);
-    return isPast(scheduleDateTime);
-  };
+  const isFiltered = searchQuery || filterStatus !== "all";
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -371,434 +315,378 @@ const Schedules = () => {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Schedules
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your past and upcoming sessions
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your mentorship session schedules
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+
+        <Dialog
+          open={isModalOpen}
+          onOpenChange={(open) => {
+            if (!open) resetForm();
+            setIsModalOpen(open);
+          }}
+        >
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-md shadow-primary/20 gap-2">
-              <Plus className="h-4 w-4" />
-              Add Schedule
+            <Button
+              size="sm"
+              className="gap-1.5 bg-gradient-primary hover:opacity-90 text-white shadow-md shadow-primary/15 rounded-xl text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add Schedule</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[520px]">
+          <DialogContent className="sm:max-w-lg rounded-[2rem]">
             <DialogHeader>
               <DialogTitle className="text-xl">
-                {editingSchedule ? "Edit Schedule" : "Add New Schedule"}
+                {editingSchedule ? "Edit Schedule" : "New Schedule"}
               </DialogTitle>
               <DialogDescription>
                 {editingSchedule
-                  ? "Update the schedule details"
-                  : "Fill in the details to add a new session schedule"}
+                  ? "Update this schedule's details."
+                  : "Schedule a new mentorship session."}
               </DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4 pt-2"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="mentor_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Mentor Name
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter mentor name"
-                            className="h-11 rounded-xl"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-5 pt-2"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mentor_name" className="text-sm font-medium">
+                    Mentor Name
+                  </Label>
+                  <Input
+                    id="mentor_name"
+                    placeholder="Jane Doe"
+                    {...form.register("mentor_name")}
+                    className="rounded-xl h-11 border-border/40 focus:border-primary focus:ring-primary/20"
                   />
-                  <FormField
-                    control={form.control}
-                    name="intern_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Intern Name
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter intern name"
-                            className="h-11 rounded-xl"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                  {form.formState.errors.mentor_name && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.mentor_name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="intern_name" className="text-sm font-medium">
+                    Intern Name
+                  </Label>
+                  <Input
+                    id="intern_name"
+                    placeholder="John Smith"
+                    {...form.register("intern_name")}
+                    className="rounded-xl h-11 border-border/40 focus:border-primary focus:ring-primary/20"
+                  />
+                  {form.formState.errors.intern_name && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.intern_name.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="schedule_date" className="text-sm font-medium">
+                    Date
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full h-11 rounded-xl justify-start text-left font-normal border-border/40",
+                          !form.watch("schedule_date") && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {form.watch("schedule_date")
+                          ? format(new Date(form.watch("schedule_date")), "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          form.watch("schedule_date")
+                            ? new Date(form.watch("schedule_date"))
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          date &&
+                          form.setValue("schedule_date", format(date, "yyyy-MM-dd"))
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="schedule_time" className="text-sm font-medium">
+                    Time
+                  </Label>
+                  <Input
+                    id="schedule_time"
+                    type="time"
+                    {...form.register("schedule_time")}
+                    className="rounded-xl h-11 border-border/40 focus:border-primary focus:ring-primary/20"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="schedule_date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="text-sm font-medium">
-                          Schedule Date
-                        </FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal h-11 rounded-xl",
-                                  !field.value &&
-                                  "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-auto p-0"
-                            align="start"
-                          >
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="schedule_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Time
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            className="h-11 rounded-xl"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="session_topic"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">
-                        Session Topic
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter session topic"
-                          className="h-11 rounded-xl"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="session_topic" className="text-sm font-medium">
+                  Session Topic
+                </Label>
+                <Textarea
+                  id="session_topic"
+                  placeholder="What will be covered in this session?"
+                  {...form.register("session_topic")}
+                  className="rounded-xl resize-none border-border/40 focus:border-primary focus:ring-primary/20 min-h-[80px]"
                 />
-                <FormField
-                  control={form.control}
-                  name="meet_link"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">
-                        Meet Link (Optional)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="https://meet.google.com/..."
-                          className="h-11 rounded-xl"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                {form.formState.errors.session_topic && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.session_topic.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="meet_link" className="text-sm font-medium">
+                  Meet Link (optional)
+                </Label>
+                <Input
+                  id="meet_link"
+                  placeholder="https://meet.google.com/..."
+                  {...form.register("meet_link")}
+                  className="rounded-xl h-11 border-border/40 focus:border-primary focus:ring-primary/20"
                 />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetForm}
+                  className="flex-1 rounded-xl h-11 border-border/60 hover:bg-muted/50"
+                >
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 bg-gradient-primary hover:opacity-90 text-white rounded-xl text-base font-semibold shadow-md shadow-primary/20 mt-2 disabled:opacity-70"
+                  className="flex-1 rounded-xl h-11 bg-gradient-primary hover:opacity-90 text-white shadow-md shadow-primary/15"
+                  disabled={isSubmitting}
                 >
-                  {submitting ? (
+                  {isSubmitting ? (
                     <div className="flex items-center gap-2">
                       <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                      {editingSchedule ? "Updating..." : "Saving..."}
+                      Saving...
                     </div>
+                  ) : editingSchedule ? (
+                    "Update Schedule"
                   ) : (
-                    editingSchedule ? "Update Schedule" : "Save Schedule"
+                    "Save Schedule"
                   )}
                 </Button>
-              </form>
-            </Form>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Main Card */}
-      <Card className="border-border/40 bg-card/80 backdrop-blur-sm shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                All Schedules
-              </CardTitle>
-              <CardDescription className="mt-0.5">
-                {filteredSchedules.length} schedule
-                {filteredSchedules.length !== 1 ? "s" : ""} found
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "gap-2 rounded-lg h-9",
-                  showFilters && "bg-primary/5 border-primary/30"
-                )}
-              >
-                <Filter className="h-3.5 w-3.5" />
-                Filters
-                {(startDate || endDate) && (
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Search */}
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Filters */}
+      <Card className="border-border/40 bg-card/60 backdrop-blur-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by intern, mentor, or topic..."
+                placeholder="Search by name or topic..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-11 rounded-xl bg-muted/50 border-transparent focus:border-primary/30 focus:bg-background transition-colors"
+                className="pl-9 h-10 rounded-xl border-border/40 bg-background/50 focus:bg-background focus:border-primary focus:ring-primary/20"
               />
             </div>
+
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-xl border-border/40">
+                <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {isFiltered && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground rounded-lg"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </Button>
+            )}
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Date Filters */}
-          {showFilters && (
-            <div className="flex flex-wrap items-end gap-3 mb-4 p-4 rounded-xl bg-muted/30 border border-border/50 animate-fade-in">
-              <div className="flex-1 min-w-[180px]">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">
-                  Start Date
-                </label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10 rounded-lg",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate
-                        ? format(startDate, "PPP")
-                        : "Select start date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0"
-                    align="start"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+      {/* Results summary */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {filteredSchedules.length}{" "}
+          {filteredSchedules.length === 1 ? "schedule" : "schedules"} found
+        </p>
+      </div>
 
-              <div className="flex-1 min-w-[180px]">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">
-                  End Date
-                </label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10 rounded-lg",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate
-                        ? format(endDate, "PPP")
-                        : "Select end date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0"
-                    align="start"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {(startDate || endDate) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearDateFilters}
-                  className="text-muted-foreground hover:text-destructive h-10 gap-1"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Table */}
+      {/* Table */}
+      <Card className="border-border/40 bg-card/80 backdrop-blur-sm overflow-hidden">
+        <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center py-16">
               <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
             </div>
           ) : filteredSchedules.length === 0 ? (
             <div className="text-center py-16">
-              <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                <CalendarIcon className="h-8 w-8 text-muted-foreground/40" />
+              <div className="h-16 w-16 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-4">
+                <CalendarIcon className="h-8 w-8 text-muted-foreground/30" />
               </div>
-              <p className="text-muted-foreground font-medium">
-                No schedules found
+              <p className="text-base font-medium text-muted-foreground">
+                {isFiltered ? "No matching schedules" : "No schedules yet"}
               </p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                {searchQuery
-                  ? "Try adjusting your search or filters"
-                  : "Add your first schedule to get started"}
+              <p className="text-sm text-muted-foreground/60 mt-1">
+                {isFiltered
+                  ? "Try adjusting your filters"
+                  : "Click 'Add Schedule' to get started"}
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-border/50 overflow-hidden">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                      Date & Time
+                  <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
+                    <TableHead
+                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                      onClick={() => handleSort("schedule_date")}
+                    >
+                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                        Date & Time
+                        <ArrowUpDown className="h-3 w-3" />
+                      </span>
                     </TableHead>
-                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground w-1/4">
-                      Intern & Topic
+                    <TableHead
+                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                      onClick={() => handleSort("mentor_name")}
+                    >
+                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                        Mentor
+                        <ArrowUpDown className="h-3 w-3" />
+                      </span>
                     </TableHead>
-                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground w-1/5">
-                      Meet Link
+                    <TableHead
+                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                      onClick={() => handleSort("intern_name")}
+                    >
+                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                        Intern
+                        <ArrowUpDown className="h-3 w-3" />
+                      </span>
                     </TableHead>
-                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground w-1/6">
-                      Status
+                    <TableHead className="py-3.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider">
+                        Topic
+                      </span>
                     </TableHead>
-                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground text-right w-1/5">
-                      Actions
+                    <TableHead className="py-3.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider">
+                        Meet
+                      </span>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                      onClick={() => handleSort("schedule_status")}
+                    >
+                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                        Status
+                        <ArrowUpDown className="h-3 w-3" />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right py-3.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider">
+                        Actions
+                      </span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredSchedules.map((schedule) => {
-                    const isPastSchedule = isSchedulePast(schedule.schedule_date, schedule.schedule_time);
-                    const canComplete = isPastSchedule && schedule.schedule_status === "pending";
+                    const scheduleDateTime = new Date(`${schedule.schedule_date}T${schedule.schedule_time}`);
+                    const canComplete = schedule.schedule_status === "pending" && isPast(scheduleDateTime);
 
                     return (
                       <TableRow
                         key={schedule.id}
-                        className="group border-b border-border/40 hover:bg-muted/20 transition-all duration-300"
+                        className="border-border/30 hover:bg-accent/30 transition-colors"
                       >
                         <TableCell className="py-4">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium text-foreground">
-                              {format(parseISO(schedule.schedule_date), "MMM dd, yyyy")}
+                          <div>
+                            <p className="font-medium text-sm">
+                              {format(new Date(schedule.schedule_date), "MMM dd, yyyy")}
                             </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Clock className="h-3 w-3" />
                               {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell className="py-4">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-sm text-foreground">
-                              {schedule.intern_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <span className="font-medium">Mentor:</span> {schedule.mentor_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground max-w-[200px] truncate">
-                              {schedule.session_topic}
-                            </p>
-                          </div>
+                        <TableCell className="py-4 text-sm">
+                          {schedule.mentor_name}
+                        </TableCell>
+                        <TableCell className="py-4 text-sm">
+                          {schedule.intern_name}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate py-4 text-sm text-muted-foreground">
+                          {schedule.session_topic}
                         </TableCell>
                         <TableCell className="py-4">
                           {schedule.meet_link ? (
-                            <div className="flex items-center gap-3">
-                              <a
-                                href={schedule.meet_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                              >
-                                <LinkIcon className="h-4 w-4" />
-                                <span className="underline underline-offset-4 decoration-blue-500/30 hover:decoration-blue-500">Join Meet</span>
-                              </a>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCopyLink(schedule.meet_link as string)}
-                                className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                                title="Copy link"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <a
+                              href={schedule.meet_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <LinkIcon className="h-3 w-3" />
+                              Join
+                            </a>
                           ) : (
-                            <span className="text-xs text-muted-foreground">No link provided</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-4">
                           <div className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
-                            schedule.schedule_status === 'completed'
-                              ? "bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20"
-                              : "bg-amber-500/10 text-amber-700 dark:text-amber-500 border border-amber-500/20"
+                            "inline-flex px-2.5 py-1 rounded-full text-xs font-semibold",
+                            schedule.schedule_status === "completed"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : schedule.schedule_status === "cancelled"
+                              ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                           )}>
-                            {schedule.schedule_status === 'completed' ? 'Completed' : 'Pending'}
+                            {schedule.schedule_status === "completed"
+                              ? "Completed"
+                              : schedule.schedule_status === "cancelled"
+                              ? "Cancelled"
+                              : "Pending"}
                           </div>
                         </TableCell>
                         <TableCell className="text-right py-4">
@@ -835,7 +723,7 @@ const Schedules = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -877,6 +765,7 @@ const Schedules = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       {/* Complete Schedule Modal */}
       <Dialog open={!!completeScheduleData} onOpenChange={(open) => !open && setCompleteScheduleData(null)}>
         <DialogContent className="sm:max-w-md">

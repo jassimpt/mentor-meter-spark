@@ -32,7 +32,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import {
   format,
   startOfMonth,
@@ -42,21 +42,46 @@ import {
   subMonths,
   isPast,
   isToday,
-  differenceInMinutes,
   parseISO,
 } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+interface ReviewData {
+  id: string;
+  user_id: string;
+  mentor_name: string;
+  intern_name: string;
+  review_date: string;
+  review_topic: string;
+  review_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ScheduleData {
+  id: string;
+  user_id: string;
+  mentor_name: string;
+  intern_name: string;
+  schedule_date: string;
+  schedule_time: string;
+  session_topic: string;
+  meet_link: string | null;
+  schedule_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Dashboard = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentRate, setPaymentRate] = useState("");
   const [currentRate, setCurrentRate] = useState<number>(0);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [schedules, setSchedules] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<ReviewData[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [completeScheduleData, setCompleteScheduleData] = useState<any | null>(null);
+  const [completeScheduleData, setCompleteScheduleData] = useState<ScheduleData | null>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const navigate = useNavigate();
@@ -73,19 +98,10 @@ const Dashboard = () => {
 
   const fetchSchedules = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("schedule")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("schedule_date", { ascending: true });
-
-      if (error) throw error;
-      setSchedules(data || []);
+      const data = await api.get<ScheduleData[]>("/api/schedules");
+      // Sort ascending by date for dashboard display
+      data.sort((a, b) => a.schedule_date.localeCompare(b.schedule_date));
+      setSchedules(data);
     } catch (error) {
       console.error("Error fetching schedules:", error);
     }
@@ -93,19 +109,8 @@ const Dashboard = () => {
 
   const fetchReviews = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("review")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("review_date", { ascending: false });
-
-      if (error) throw error;
-      setReviews(data || []);
+      const data = await api.get<ReviewData[]>("/api/reviews");
+      setReviews(data);
     } catch (error) {
       console.error("Error fetching reviews:", error);
     } finally {
@@ -201,15 +206,10 @@ const Dashboard = () => {
   const chartData: any[] = [];
   const dataMap = new Map();
 
-  // Clone start date so we don't mutate monthStart
   const loopDate = new Date(monthStart);
   while (loopDate <= today) {
     const dateStr = format(loopDate, "MMM dd");
-    dataMap.set(dateStr, {
-      date: dateStr,
-      reviews: 0,
-      earnings: 0,
-    });
+    dataMap.set(dateStr, { date: dateStr, reviews: 0, earnings: 0 });
     loopDate.setDate(loopDate.getDate() + 1);
   }
 
@@ -228,24 +228,14 @@ const Dashboard = () => {
   Array.from(dataMap.values()).forEach((v) => chartData.push(v));
 
   const chartConfig = {
-    reviews: {
-      label: "Reviews",
-      color: "hsl(221, 83%, 53%)",
-    },
-    earnings: {
-      label: "Earnings (₹)",
-      color: "#10b981",
-    },
+    reviews: { label: "Reviews", color: "hsl(221, 83%, 53%)" },
+    earnings: { label: "Earnings (₹)", color: "#10b981" },
   } satisfies ChartConfig;
 
   // Schedules reminders logic
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("schedule")
-        .update({ schedule_status: newStatus })
-        .eq("id", id);
-      if (error) throw error;
+      await api.patch(`/api/schedules/${id}/status`, { status: newStatus });
       fetchSchedules();
 
       if (newStatus === "cancelled") {
@@ -277,31 +267,9 @@ const Dashboard = () => {
     setIsSubmittingReview(true);
 
     try {
-      // 1. Mark schedule as completed
-      const { error: scheduleError } = await supabase
-        .from("schedule")
-        .update({ schedule_status: "completed" })
-        .eq("id", completeScheduleData.id);
-
-      if (scheduleError) throw scheduleError;
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // 2. Create a review record from the schedule data
-      if (user) {
-        const { error: reviewError } = await supabase
-          .from("review")
-          .insert({
-            user_id: user.id,
-            mentor_name: completeScheduleData.mentor_name,
-            intern_name: completeScheduleData.intern_name,
-            review_topic: completeScheduleData.session_topic,
-            review_date: new Date().toISOString().split('T')[0], // Give today's date or schedule date? Let's use today's date or schedule date. using schedule_date
-            review_score: reviewScore
-          });
-
-        if (reviewError) throw reviewError;
-      }
+      await api.post(`/api/schedules/${completeScheduleData.id}/complete`, {
+        review_score: reviewScore,
+      });
 
       toast({
         title: "Schedule Completed",
@@ -311,7 +279,7 @@ const Dashboard = () => {
       setCompleteScheduleData(null);
       setReviewScore(5);
       fetchSchedules();
-      fetchReviews(); // refresh reviews to reflect the new one
+      fetchReviews();
     } catch (error: any) {
       console.error("Error completing schedule:", error);
       toast({
@@ -327,7 +295,6 @@ const Dashboard = () => {
   const pendingSchedules = schedules.filter(s => s.schedule_status === "pending");
   const upcomingSchedules = pendingSchedules.filter(s => {
     const scheduleDateTime = new Date(`${s.schedule_date}T${s.schedule_time}`);
-    // Show as upcoming if it's today and in the future, or up to 2 hours away
     if (isPast(scheduleDateTime)) return false;
     if (isToday(scheduleDateTime)) return true;
     return false;
@@ -633,7 +600,6 @@ const Dashboard = () => {
                 {stat.title}
               </p>
             </CardContent>
-            {/* Subtle gradient accent on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           </Card>
         ))}
@@ -789,10 +755,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Schedule Reminders & Quick Actions — Side column */}
+        {/* Quick Actions — Side column */}
         <div className="space-y-4">
-
-          {/* Quick Actions Card */}
           <Card className="border-border/40 bg-card/80 backdrop-blur-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">

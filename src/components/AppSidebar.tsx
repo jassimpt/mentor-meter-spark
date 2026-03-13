@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
+import { tokenStore } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -49,21 +49,13 @@ export function AppSidebar() {
   const { theme, setTheme } = useTheme();
   const collapsed = state === "collapsed";
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Logout failed",
-        description: error.message,
-      });
-    } else {
-      navigate("/auth");
-      toast({
-        title: "Logged out",
-        description: "You've been successfully logged out.",
-      });
-    }
+  const handleLogout = () => {
+    tokenStore.clear();
+    navigate("/auth");
+    toast({
+      title: "Logged out",
+      description: "You've been successfully logged out.",
+    });
   };
 
   const NavItem = ({
