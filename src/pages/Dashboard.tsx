@@ -47,6 +47,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 
 interface ReviewData {
   id: string;
@@ -306,7 +307,7 @@ const Dashboard = () => {
   }).slice(0, 2);
 
   return (
-    <div className="space-y-8 max-w-7xl">
+    <div className="space-y-4 md:space-y-8 max-w-7xl pb-safe">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
@@ -333,7 +334,7 @@ const Dashboard = () => {
               <span className="font-medium">₹{currentRate}/review</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md rounded-[2rem] max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-t-[2rem] max-md:rounded-b-none max-md:w-full max-md:max-w-none max-md:slide-in-from-bottom-5 max-md:animate-in p-6">
             <DialogHeader>
               <DialogTitle className="text-xl">
                 Set Payment Rate
@@ -422,7 +423,6 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {upcomingSchedules.map(schedule => (
                 <div key={schedule.id} className="p-3.5 rounded-xl border border-blue-500/10 bg-white/60 dark:bg-background/60 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all group">
@@ -539,64 +539,64 @@ const Dashboard = () => {
       )}
 
       {/* Previous Month Performance */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-2">
-        <div className="flex items-center justify-between p-4 rounded-[1.25rem] border border-border/40 bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-colors shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center">
-              <History className="h-4 w-4 text-muted-foreground" />
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 md:gap-4 mb-2">
+        <div className="flex items-center justify-between p-3 md:p-4 rounded-[1rem] md:rounded-[1.25rem] border border-border/40 bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-colors shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+              <History className="h-4.5 w-4.5 md:h-4 md:w-4 text-muted-foreground" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Previous Month</p>
-              <p className="text-xs text-muted-foreground">{format(prevMonthDate, "MMMM yyyy")}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] md:text-sm font-medium text-foreground truncate">Prev. Month</p>
+              <p className="text-[9px] md:text-xs text-muted-foreground truncate">{format(prevMonthDate, "MMM yyyy")}</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-bold tracking-tight">{reviewsPrevMonth.length}</p>
-            <p className="text-xs font-medium text-muted-foreground">Reviews</p>
+          <div className="text-right shrink-0">
+            <p className="text-sm md:text-xl font-bold tracking-tight">{reviewsPrevMonth.length}</p>
+            <p className="text-[9px] md:text-xs font-medium text-muted-foreground">Reviews</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-4 rounded-[1.25rem] border border-border/40 bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-colors shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center justify-between p-3 md:p-4 rounded-[1rem] md:rounded-[1.25rem] border border-border/40 bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-colors shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+              <DollarSign className="h-4.5 w-4.5 md:h-4 md:w-4 text-muted-foreground" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Previous Earnings</p>
-              <p className="text-xs text-muted-foreground">{format(prevMonthDate, "MMMM yyyy")}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] md:text-sm font-medium text-foreground truncate">Prev. Earnings</p>
+              <p className="text-[9px] md:text-xs text-muted-foreground truncate">{format(prevMonthDate, "MMM yyyy")}</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-bold tracking-tight">₹{prevMonthEarnings.toLocaleString("en-IN")}</p>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-emerald-600/80 mt-0.5">Earned</p>
+          <div className="text-right shrink-0">
+            <p className="text-sm md:text-xl font-bold tracking-tight">₹{prevMonthEarnings.toLocaleString("en-IN")}</p>
+            <p className="text-[9px] uppercase tracking-wider font-semibold text-emerald-600/80 mt-0.5">Earned</p>
           </div>
         </div>
       </div>
 
       {/* Bento Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {stats.map((stat, i) => (
           <Card
             key={stat.title}
             className="group border-border/40 bg-card/80 backdrop-blur-sm hover:shadow-lg hover:shadow-primary/5 hover:border-border/60 transition-all duration-300 overflow-hidden relative"
           >
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-3">
+            <CardContent className="p-3.5 md:p-5">
+              <div className="flex items-start justify-between mb-2 md:mb-3">
                 <div
-                  className={`h-10 w-10 rounded-xl ${stat.iconBg} flex items-center justify-center transition-transform duration-300 group-hover:scale-110`}
+                  className={`h-8 w-8 md:h-10 md:w-10 rounded-lg md:rounded-xl ${stat.iconBg} flex items-center justify-center transition-transform duration-300 group-hover:scale-110`}
                 >
-                  <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                  <stat.icon className={`h-4.5 w-4.5 md:h-5 md:w-5 ${stat.iconColor}`} />
                 </div>
                 {stat.trend && (
-                  <span className="text-xs font-medium text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                  <span className="text-[9px] md:text-xs font-medium text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                     {stat.trend}
                   </span>
                 )}
               </div>
-              <p className="text-2xl font-bold tracking-tight">
+              <p className="text-lg md:text-2xl font-bold tracking-tight">
                 {stat.value}
               </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-[11px] md:text-sm text-muted-foreground mt-0.5 truncate">
                 {stat.title}
               </p>
             </CardContent>
@@ -607,17 +607,17 @@ const Dashboard = () => {
 
       {/* Monthly Performance Chart */}
       <Card className="border-border/40 bg-card/80 backdrop-blur-sm shadow-sm group hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
-        <CardHeader className="pb-6">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
+        <CardHeader className="p-4 md:p-6 pb-2 md:pb-6">
+          <CardTitle className="text-base md:text-lg font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4.5 w-4.5 md:h-5 md:w-5 text-primary" />
             Performance Overview
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-[11px] md:text-sm text-muted-foreground mt-0.5 md:mt-1">
             Daily review counts and earnings for {format(today, "MMMM yyyy")}
           </p>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+          <ChartContainer config={chartConfig} className="h-[180px] md:h-[300px] w-full">
             <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="fillEarnings" x1="0" y1="0" x2="0" y2="1">
@@ -815,6 +815,8 @@ const Dashboard = () => {
                 <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 ml-auto group-hover/action:text-primary transition-colors" />
               </button>
 
+              <PWAInstallButton variant="quick-action" />
+
             </CardContent>
           </Card>
         </div>
@@ -822,7 +824,7 @@ const Dashboard = () => {
 
       {/* Complete Schedule Modal */}
       <Dialog open={!!completeScheduleData} onOpenChange={(open) => !open && setCompleteScheduleData(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-[2rem] max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-t-[2rem] max-md:rounded-b-none max-md:w-full max-md:max-w-none max-md:slide-in-from-bottom-5 max-md:animate-in p-6">
           <DialogHeader>
             <DialogTitle className="text-xl">Complete Schedule</DialogTitle>
             <DialogDescription>

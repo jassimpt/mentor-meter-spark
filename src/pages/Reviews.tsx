@@ -329,7 +329,7 @@ const Reviews = () => {
                 <span>Add Review</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg rounded-[2rem]">
+            <DialogContent className="sm:max-w-lg rounded-[2rem] max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-t-[2rem] max-md:rounded-b-none max-md:w-full max-md:max-w-none max-md:slide-in-from-bottom-5 max-md:animate-in p-6 max-md:max-h-[85vh] max-md:overflow-y-auto max-md:pb-12">
               <DialogHeader>
                 <DialogTitle className="text-xl">
                   {editingReview ? "Edit Review" : "New Review"}
@@ -600,109 +600,164 @@ const Reviews = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("review_date")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Date
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("mentor_name")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Mentor
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("intern_name")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Intern
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead className="py-3.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider">
-                        Topic
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("review_score")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Score
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right py-3.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider">
-                        Actions
-                      </span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredReviews.map((review) => (
-                    <TableRow
-                      key={review.id}
-                      className="border-border/30 hover:bg-accent/30 transition-colors"
-                    >
-                      <TableCell className="font-medium py-4 text-sm">
-                        {format(new Date(review.review_date), "MMM dd, yyyy")}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm">
-                        {review.mentor_name}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm">
-                        {review.intern_name}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate py-4 text-sm text-muted-foreground">
-                        {review.review_topic}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <div className="flex items-center gap-1.5">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          <span className="font-semibold text-sm">
-                            {review.review_score}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right py-4">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(review)}
-                            className="h-8 md:px-3 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all"
-                          >
-                            <Pencil className="h-3.5 w-3.5 md:mr-1.5" />
-                            <span className="hidden md:inline">Edit</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDeletingReviewId(review.id)}
-                            className="h-8 md:px-3 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 md:mr-1.5" />
-                            <span className="hidden md:inline">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("review_date")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Date
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("mentor_name")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Mentor
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("intern_name")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Intern
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead className="py-3.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider">
+                          Topic
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("review_score")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Score
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-right py-3.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider">
+                          Actions
+                        </span>
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredReviews.map((review) => (
+                      <TableRow
+                        key={review.id}
+                        className="border-border/30 hover:bg-accent/30 transition-colors"
+                      >
+                        <TableCell className="font-medium py-4 text-sm">
+                          {format(new Date(review.review_date), "MMM dd, yyyy")}
+                        </TableCell>
+                        <TableCell className="py-4 text-sm">
+                          {review.mentor_name}
+                        </TableCell>
+                        <TableCell className="py-4 text-sm">
+                          {review.intern_name}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate py-4 text-sm text-muted-foreground">
+                          {review.review_topic}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-1.5">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            <span className="font-semibold text-sm">
+                              {review.review_score}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right py-4">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(review)}
+                              className="h-8 px-3 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all"
+                            >
+                              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                              <span>Edit</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeletingReviewId(review.id)}
+                              className="h-8 px-3 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                              <span>Delete</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Mobile Cards */}
+              <div className="md:hidden flex flex-col gap-3 p-3 bg-muted/10">
+                {filteredReviews.map((review) => (
+                  <div key={review.id} className="bg-card rounded-xl p-4 shadow-sm border border-border/40 relative">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">{review.review_topic}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {format(new Date(review.review_date), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-md">
+                        <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                        <span className="font-bold text-xs text-amber-700 dark:text-amber-400">{review.review_score}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-4 mt-3">
+                      <div className="flex-1 bg-muted/50 rounded-lg p-2 text-center">
+                        <p className="text-[10px] uppercase text-muted-foreground font-semibold">Mentor</p>
+                        <p className="text-xs font-medium text-foreground truncate">{review.mentor_name}</p>
+                      </div>
+                      <div className="flex-1 bg-muted/50 rounded-lg p-2 text-center">
+                        <p className="text-[10px] uppercase text-muted-foreground font-semibold">Intern</p>
+                        <p className="text-xs font-medium text-foreground truncate">{review.intern_name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(review)}
+                        className="flex-1 h-9 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all rounded-lg"
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeletingReviewId(review.id)}
+                        className="flex-1 h-9 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all rounded-lg"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

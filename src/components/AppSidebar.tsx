@@ -23,6 +23,7 @@ import { tokenStore } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { PWAInstallButton } from "./PWAInstallButton";
 
 const navItems = [
   {
@@ -196,7 +197,10 @@ export function AppSidebar() {
         </nav>
 
         {/* Footer */}
-        <SidebarFooter className="p-0 mt-auto space-y-1 border-t border-border/40 pt-3">
+        <SidebarFooter className="p-0 mt-auto space-y-1.5 border-t border-border/40 pt-3">
+          <div className="px-1 py-1">
+            <PWAInstallButton collapsed={collapsed} />
+          </div>
           <ActionButton
             icon={Sun}
             label={theme === "dark" ? "Light Mode" : "Dark Mode"}

@@ -336,7 +336,7 @@ const Schedules = () => {
               <span>Add Schedule</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg rounded-[2rem]">
+          <DialogContent className="sm:max-w-lg rounded-[2rem] max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-t-[2rem] max-md:rounded-b-none max-md:w-full max-md:max-w-none max-md:slide-in-from-bottom-5 max-md:animate-in p-6 max-md:max-h-[85vh] max-md:overflow-y-auto max-md:pb-12">
             <DialogHeader>
               <DialogTitle className="text-xl">
                 {editingSchedule ? "Edit Schedule" : "New Schedule"}
@@ -572,161 +572,263 @@ const Schedules = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("schedule_date")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Date & Time
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("mentor_name")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Mentor
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("intern_name")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Intern
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead className="py-3.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider">
-                        Topic
-                      </span>
-                    </TableHead>
-                    <TableHead className="py-3.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider">
-                        Meet
-                      </span>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:text-foreground transition-colors py-3.5"
-                      onClick={() => handleSort("schedule_status")}
-                    >
-                      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Status
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    </TableHead>
-                    <TableHead className="text-right py-3.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider">
-                        Actions
-                      </span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSchedules.map((schedule) => {
-                    const scheduleDateTime = new Date(`${schedule.schedule_date}T${schedule.schedule_time}`);
-                    const canComplete = schedule.schedule_status === "pending" && isPast(scheduleDateTime);
-
-                    return (
-                      <TableRow
-                        key={schedule.id}
-                        className="border-border/30 hover:bg-accent/30 transition-colors"
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("schedule_date")}
                       >
-                        <TableCell className="py-4">
-                          <div>
-                            <p className="font-medium text-sm">
-                              {format(new Date(schedule.schedule_date), "MMM dd, yyyy")}
-                            </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Clock className="h-3 w-3" />
-                              {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 text-sm">
-                          {schedule.mentor_name}
-                        </TableCell>
-                        <TableCell className="py-4 text-sm">
-                          {schedule.intern_name}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate py-4 text-sm text-muted-foreground">
-                          {schedule.session_topic}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          {schedule.meet_link ? (
-                            <a
-                              href={schedule.meet_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <LinkIcon className="h-3 w-3" />
-                              Join
-                            </a>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className={cn(
-                            "inline-flex px-2.5 py-1 rounded-full text-xs font-semibold",
-                            schedule.schedule_status === "completed"
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : schedule.schedule_status === "cancelled"
-                              ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                          )}>
-                            {schedule.schedule_status === "completed"
-                              ? "Completed"
-                              : schedule.schedule_status === "cancelled"
-                              ? "Cancelled"
-                              : "Pending"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right py-4">
-                          <div className="flex justify-end gap-2">
-                            {canComplete && (
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Date & Time
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("mentor_name")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Mentor
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("intern_name")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Intern
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead className="py-3.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider">
+                          Topic
+                        </span>
+                      </TableHead>
+                      <TableHead className="py-3.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider">
+                          Meet
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-foreground transition-colors py-3.5"
+                        onClick={() => handleSort("schedule_status")}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+                          Status
+                          <ArrowUpDown className="h-3 w-3" />
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-right py-3.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider">
+                          Actions
+                        </span>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSchedules.map((schedule) => {
+                      const scheduleDateTime = new Date(`${schedule.schedule_date}T${schedule.schedule_time}`);
+                      const canComplete = schedule.schedule_status === "pending" && isPast(scheduleDateTime);
+
+                      return (
+                        <TableRow
+                          key={schedule.id}
+                          className="border-border/30 hover:bg-accent/30 transition-colors"
+                        >
+                          <TableCell className="py-4">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {format(new Date(schedule.schedule_date), "MMM dd, yyyy")}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 text-sm">
+                            {schedule.mentor_name}
+                          </TableCell>
+                          <TableCell className="py-4 text-sm">
+                            {schedule.intern_name}
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate py-4 text-sm text-muted-foreground">
+                            {schedule.session_topic}
+                          </TableCell>
+                          <TableCell className="py-4">
+                            {schedule.meet_link ? (
+                              <a
+                                href={schedule.meet_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <LinkIcon className="h-3 w-3" />
+                                Join
+                              </a>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <div className={cn(
+                              "inline-flex px-2.5 py-1 rounded-full text-xs font-semibold",
+                              schedule.schedule_status === "completed"
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : schedule.schedule_status === "cancelled"
+                                ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            )}>
+                              {schedule.schedule_status === "completed"
+                                ? "Completed"
+                                : schedule.schedule_status === "cancelled"
+                                ? "Cancelled"
+                                : "Pending"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right py-4">
+                            <div className="flex justify-end gap-2">
+                              {canComplete && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  title="Mark as completed"
+                                  onClick={() => setCompleteScheduleData(schedule)}
+                                  className="h-8 w-8 p-0 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/30"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                title="Mark as completed"
-                                onClick={() => setCompleteScheduleData(schedule)}
-                                className="h-8 w-8 p-0 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/30"
+                                onClick={() => handleEdit(schedule)}
+                                className="h-8 px-3 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all"
                               >
-                                <CheckCircle className="h-4 w-4" />
+                                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                                <span>Edit</span>
                               </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(schedule)}
-                              className="h-8 md:px-3 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all"
-                            >
-                              <Pencil className="h-3.5 w-3.5 md:mr-1.5" />
-                              <span className="hidden md:inline">Edit</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDeletingScheduleId(schedule.id)}
-                              className="h-8 md:px-3 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 md:mr-1.5" />
-                              <span className="hidden md:inline">Delete</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeletingScheduleId(schedule.id)}
+                                className="h-8 px-3 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                <span>Delete</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden flex flex-col gap-3 p-3 bg-muted/10">
+                {filteredSchedules.map((schedule) => {
+                  const scheduleDateTime = new Date(`${schedule.schedule_date}T${schedule.schedule_time}`);
+                  const canComplete = schedule.schedule_status === "pending" && isPast(scheduleDateTime);
+
+                  return (
+                    <div key={schedule.id} className="bg-card rounded-xl p-4 shadow-sm border border-border/40 relative">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{schedule.session_topic}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Clock className="h-3 w-3" />
+                            {format(new Date(schedule.schedule_date), "MMM dd")} • {format(parseISO(`1970-01-01T${schedule.schedule_time}`), "hh:mm a")}
+                          </p>
+                        </div>
+                        <div className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider",
+                          schedule.schedule_status === "completed"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : schedule.schedule_status === "cancelled"
+                            ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        )}>
+                          {schedule.schedule_status === "completed"
+                            ? "Completed"
+                            : schedule.schedule_status === "cancelled"
+                            ? "Cancelled"
+                            : "Pending"}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-4 mt-3">
+                        <div className="flex-1 bg-muted/50 rounded-lg p-2 text-center">
+                          <p className="text-[10px] uppercase text-muted-foreground font-semibold">Mentor</p>
+                          <p className="text-xs font-medium text-foreground truncate">{schedule.mentor_name}</p>
+                        </div>
+                        <div className="flex-1 bg-muted/50 rounded-lg p-2 text-center">
+                          <p className="text-[10px] uppercase text-muted-foreground font-semibold">Intern</p>
+                          <p className="text-xs font-medium text-foreground truncate">{schedule.intern_name}</p>
+                        </div>
+                      </div>
+
+                      {schedule.meet_link && (
+                        <div className="mb-4">
+                          <a
+                            href={schedule.meet_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-1.5 w-full h-9 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-semibold transition-colors"
+                          >
+                            <LinkIcon className="h-3.5 w-3.5" />
+                            Join Meeting
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        {canComplete && (
+                          <Button
+                            size="sm"
+                            title="Mark as completed"
+                            onClick={() => setCompleteScheduleData(schedule)}
+                            className="flex-1 h-9 text-xs font-semibold bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-sm"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                            Complete
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(schedule)}
+                          className={cn(
+                            "h-9 text-xs bg-transparent border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all rounded-lg",
+                            canComplete ? "px-3 w-auto flex-none" : "flex-1"
+                          )}
+                        >
+                          <Pencil className={cn("h-3.5 w-3.5", canComplete ? "" : "mr-1.5")} />
+                          {!canComplete && "Edit"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeletingScheduleId(schedule.id)}
+                          className={cn(
+                            "h-9 text-xs bg-transparent border-border hover:border-destructive/40 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all rounded-lg",
+                            canComplete ? "px-3 w-auto flex-none" : "flex-1"
+                          )}
+                        >
+                          <Trash2 className={cn("h-3.5 w-3.5", canComplete ? "" : "mr-1.5")} />
+                          {!canComplete && "Delete"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
@@ -768,7 +870,7 @@ const Schedules = () => {
 
       {/* Complete Schedule Modal */}
       <Dialog open={!!completeScheduleData} onOpenChange={(open) => !open && setCompleteScheduleData(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-[2rem] max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-t-[2rem] max-md:rounded-b-none max-md:w-full max-md:max-w-none max-md:slide-in-from-bottom-5 max-md:animate-in p-6">
           <DialogHeader>
             <DialogTitle className="text-xl">Complete Schedule</DialogTitle>
             <DialogDescription>
