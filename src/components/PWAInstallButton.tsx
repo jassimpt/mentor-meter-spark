@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Download, ArrowUpRight, Share, PlusSquare, Monitor, X } from "lucide-react";
 import { Button } from "@/components/ui/button";

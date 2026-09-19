@@ -1,4 +1,7 @@
-import { NavLink, useLocation } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LayoutDashboard, ClipboardList, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,17 +24,17 @@ const navItems = [
 ];
 
 export function MobileBottomNav() {
-  const location = useLocation();
+  const pathname = usePathname();
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border/40 pb-safe shadow-[0_-8px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.2)]">
       <nav className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.url;
+          const isActive = pathname === item.url;
           return (
-            <NavLink
+            <Link
               key={item.title}
-              to={item.url}
+              href={item.url}
               className={cn(
                 "flex flex-col items-center justify-center w-full h-full space-y-1 relative group transition-all duration-300",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -60,7 +63,7 @@ export function MobileBottomNav() {
               )}>
                 {item.title}
               </span>
-            </NavLink>
+            </Link>
           );
         })}
       </nav>

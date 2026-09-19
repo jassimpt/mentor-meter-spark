@@ -1,3 +1,5 @@
+"use client";
+
 import {
   LayoutDashboard,
   ClipboardList,
@@ -7,7 +9,8 @@ import {
   Moon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
-import { NavLink, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -45,7 +48,8 @@ const navItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const collapsed = state === "collapsed";
@@ -190,9 +194,9 @@ export function AppSidebar() {
         {/* Nav */}
         <nav className="space-y-1 flex-1">
           {navItems.map((item) => (
-            <NavLink key={item.title} to={item.url}>
-              {({ isActive }) => <NavItem item={item} isActive={isActive} />}
-            </NavLink>
+            <Link key={item.title} href={item.url}>
+              <NavItem item={item} isActive={pathname === item.url} />
+            </Link>
           ))}
         </nav>
 

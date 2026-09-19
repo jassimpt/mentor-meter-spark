@@ -8,7 +8,9 @@
  *  - Typed helper methods (get, post, put, patch, delete)
  */
 
-const API_URL = import.meta.env.VITE_API_URL || "https://mentor-meter-backend.onrender.com/";
+const USE_FAST_API = process.env.NEXT_PUBLIC_USE_FAST_API_BACKEND === "true";
+const FAST_API_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || "https://mentor-meter-backend.onrender.com";
+const API_URL = USE_FAST_API ? FAST_API_URL : ""; // Use relative paths for internal Next.js API
 
 // ── Token helpers ──────────────────────────────────────────────────
 

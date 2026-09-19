@@ -1,19 +1,21 @@
+"use client";
+
 import { BrandLogo } from "@/components/BrandLogo";
 import { LogOut, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tokenStore } from "@/lib/api";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 
 export function MobileHeader() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
     tokenStore.clear();
-    navigate("/auth");
+    router.push("/auth");
     toast({
       title: "Logged out",
       description: "You've been successfully logged out.",

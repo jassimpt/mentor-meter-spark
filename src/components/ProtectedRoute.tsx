@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { api, tokenStore } from "@/lib/api";
 
 interface ProtectedRouteProps {
@@ -8,6 +10,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,16 +32,18 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth();
   }, []);
 
-  if (authenticated === null) {
+  useEffect(() => {
+    if (authenticated === false) {
+      router.push("/auth");
+    }
+  }, [authenticated, router]);
+
+  if (authenticated === null || authenticated === false) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
       </div>
     );
-  }
-
-  if (!authenticated) {
-    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;
